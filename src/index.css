@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gold: #D4AF37;
+  --color-gold-light: #F1D279;
+  --color-gold-dark: #A68926;
+  
+  --color-luxury-black: #000000;
+  --color-luxury-dark: #0A0A0A;
+  --color-luxury-gray: #1A1A1A;
+  --color-luxury-border: #2A2A2A;
+}
+
+@utility custom-ring {
+  @apply ring-2 ring-gold border-gold;
+}
+
+@layer base {
+  body {
+    @apply bg-luxury-black text-white;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+/* Custom Scrollbar for Luxury Look */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #000;
+}
+::-webkit-scrollbar-thumb {
+  background: #2A2A2A;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D4AF37;
+}
