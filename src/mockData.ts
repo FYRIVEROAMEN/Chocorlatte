@@ -1,8 +1,8 @@
 import type { User, Format, Flavor, Product } from './types';
 
 export const MOCK_USERS: User[] = [
-  { id: '1', name: 'Tomás', username: 'admin', role: 'ADMIN', password: 'admin' },
-  { id: '2', name: 'Juan', username: 'empleado', role: 'EMPLEADO', password: '123' },
+  { id: '1', name: 'Tomás', username: 'Tomas', role: 'ADMIN', password: 'admin' },
+  { id: '2', name: 'Juan', username: 'Empleado', role: 'EMPLEADO', password: '123' },
 ];
 
 export const MOCK_FORMATS: Format[] = [
