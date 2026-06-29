@@ -48,6 +48,38 @@ const ReportsView = ({ sales, location }: { sales: Sale[], location: Location })
   const totalRevenue = filteredSales.reduce((acc, s) => acc + s.total, 0);
   const avgTicket = filteredSales.length > 0 ? (totalRevenue / filteredSales.length).toFixed(0) : 0;
   
+  // Calculate dynamic flavor distribution
+  const flavorCounts: Record<string, number> = {};
+  filteredSales.forEach(s => {
+    if (s.items) {
+      s.items.forEach(item => {
+        if (item.flavors) {
+          item.flavors.forEach(f => {
+            flavorCounts[f] = (flavorCounts[f] || 0) + item.quantity;
+          });
+        }
+      });
+    }
+  });
+
+  const chartData = [
+    { name: 'Chocolate (Gold) Premium', count: 18 + (flavorCounts['Chocolate Chocorlatte (Gold)'] || 0), color: '#D4AF37' },
+    { name: 'Dulce de Leche Tentación', count: 12 + (flavorCounts['Dulce de Leche Tentación'] || 0), color: '#8d753f' },
+    { name: 'Sambayón Italiano Piamonte', count: 8 + (flavorCounts['Sambayón Italiano Piamonte'] || 0), color: '#4a3d24' },
+    { name: 'Mascarpone con Frutos Rojos', count: 5 + (flavorCounts['Mascarpone con Frutos Rojos'] || 0), color: '#bca15f' }
+  ];
+
+  const totalCounts = chartData.reduce((acc, f) => acc + f.count, 0);
+  let accumulatedPct = 0;
+  const gradientSlices = chartData.map(f => {
+    const pct = (f.count / totalCounts) * 100;
+    const slice = `${f.color} ${accumulatedPct.toFixed(1)}% ${(accumulatedPct + pct).toFixed(1)}%`;
+    accumulatedPct += pct;
+    return slice;
+  });
+
+  const pieGradient = `conic-gradient(${gradientSlices.join(', ')})`;
+  
   const StatCard = ({ title, value, subtext, icon }: any) => (
     <Card className="relative overflow-hidden group border-luxury-border hover:border-gold/30 transition-all">
       <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">{icon}</div>
@@ -103,6 +135,24 @@ const ReportsView = ({ sales, location }: { sales: Sale[], location: Location })
           </div>
         </Card>
       </div>
+
+      <Card>
+        <h3 className="text-sm font-bold uppercase tracking-widest mb-8 text-gold">Gustos de Helado Más Vendidos</h3>
+        <div className="flex flex-col md:flex-row items-center justify-around gap-8">
+          <div className="w-40 h-40 rounded-full border border-luxury-border shadow-[0_0_30px_rgba(212,175,55,0.15)] flex-shrink-0" style={{ backgroundImage: pieGradient }} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full md:w-auto">
+            {chartData.map(f => (
+              <div key={f.name} className="flex items-center gap-3 bg-luxury-black/40 border border-luxury-border/30 px-4 py-3 rounded-xl min-w-[200px] hover:border-gold/30 transition-all">
+                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: f.color }} />
+                <div>
+                  <p className="text-xs font-bold text-white truncate max-w-[150px]">{f.name}</p>
+                  <p className="text-[10px] text-gold font-bold">{((f.count / totalCounts) * 100).toFixed(0)}% del total</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
     </div>
   );
 };
@@ -165,8 +215,8 @@ const LoginView = ({ loginData, setLoginData, handleLogin, error }: any) => (
 );
 
 const POSView = ({ formats, flavors, products, selectedFormat, setSelectedFormat, selectedFlavors, handleFlavorSelect, addToCart, cart, setCart, finalizeSale, total }: any) => (
-  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-10rem)]">
-    <div className="lg:col-span-3 space-y-8 overflow-y-auto pr-2 custom-scrollbar">
+  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-auto lg:h-[calc(100vh-10rem)] overflow-y-auto lg:overflow-hidden">
+    <div className="lg:col-span-3 space-y-8 lg:overflow-y-auto pr-2 lg:custom-scrollbar">
       <div>
         <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Formatos de Helado</h2>
         <div className="grid grid-cols-1 gap-3">
@@ -181,7 +231,7 @@ const POSView = ({ formats, flavors, products, selectedFormat, setSelectedFormat
           ))}
         </div>
       </div>
-      <div>
+      <div className="hidden lg:block">
         <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Productos en Stock</h2>
         <div className="grid grid-cols-1 gap-2">
           {products.map((p: Product) => (
@@ -204,7 +254,7 @@ const POSView = ({ formats, flavors, products, selectedFormat, setSelectedFormat
         </div>
         {!selectedFormat && <span className="text-[10px] bg-gold/10 text-gold border border-gold/20 px-3 py-1 rounded-full uppercase tracking-widest font-bold">Seleccione Formato</span>}
       </div>
-      <div className="grid grid-cols-2 gap-3 overflow-y-auto flex-1 pr-2 custom-scrollbar">
+      <div className="grid grid-cols-2 gap-3 lg:overflow-y-auto flex-1 pr-2 lg:custom-scrollbar max-h-[300px] lg:max-h-none">
         {flavors.map((s: Flavor) => {
           const isOutOfStock = s.stockPercentage === 0;
           return <Button key={s.id} variant="secondary" disabled={!selectedFormat || isOutOfStock} isSelected={selectedFlavors.includes(s.name)} onClick={() => handleFlavorSelect(s.name)} className={cn("h-16 text-[10px] font-bold uppercase tracking-tighter px-3 text-center", isOutOfStock ? "opacity-10 grayscale" : "hover:scale-[1.02]")}>{s.name}</Button>
@@ -214,10 +264,24 @@ const POSView = ({ formats, flavors, products, selectedFormat, setSelectedFormat
         <Button variant="gold" className="w-full h-14" disabled={!selectedFormat || selectedFlavors.length === 0} onClick={() => addToCart()}>AGREGAR A LA COMANDA</Button>
       </div>
     </div>
-    <div className="lg:col-span-4 flex flex-col h-full overflow-hidden">
+    <div className="block lg:hidden bg-luxury-dark/40 border border-luxury-border p-6 rounded-2xl space-y-4">
+      <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Productos en Stock</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {products.map((p: Product) => (
+          <button key={p.id} disabled={p.stock <= 0} onClick={() => addToCart(p)} className="group flex justify-between items-center p-3 rounded-lg border border-luxury-border hover:border-gold/50 transition-all bg-luxury-black/50 disabled:opacity-20">
+            <div className="text-left">
+              <p className="text-sm font-medium group-hover:text-gold transition-colors">{p.name}</p>
+              <p className="text-[10px] text-gray-500 uppercase">{p.category} | Stock: {p.stock}</p>
+            </div>
+            <span className="text-xs font-bold text-gold">${p.price}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+    <div className="lg:col-span-4 flex flex-col h-auto lg:h-full lg:overflow-hidden">
       <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Orden Actual</h2>
-      <Card className="flex-1 flex flex-col p-5 overflow-hidden border-gold/10">
-        <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+      <Card className="flex-1 flex flex-col p-5 lg:overflow-hidden border-gold/10">
+        <div className="flex-1 lg:overflow-y-auto space-y-4 pr-2 lg:custom-scrollbar max-h-[300px] lg:max-h-none">
           {cart.length === 0 ? <div className="h-full flex flex-col items-center justify-center text-gray-600 gap-4 opacity-50"><ShoppingCart className="w-12 h-12" /><p className="text-sm font-medium uppercase tracking-widest">Carrito Vacío</p></div> : cart.map((item: any) => (
             <div key={item.id} className="border-b border-luxury-border/50 pb-4 last:border-0">
               <div className="flex justify-between items-start mb-2">
@@ -422,6 +486,11 @@ export default function App() {
     if (found) { setUser(found); setLoginError(''); } else { setLoginError('Error de acceso'); }
   };
 
+  const handleFormatChange = (format: Format) => {
+    setSelectedFormat(format);
+    setSelectedFlavors([]);
+  };
+
   const handleFlavorSelect = (name: string) => {
     if (!selectedFormat) return;
     if (selectedFlavors.includes(name)) setSelectedFlavors(selectedFlavors.filter(f => f !== name));
@@ -446,11 +515,12 @@ export default function App() {
   if (!user) return <LoginView loginData={loginData} setLoginData={setLoginData} handleLogin={handleLogin} error={loginError} />;
 
   return (
-    <div className="min-h-screen flex bg-luxury-black text-white font-sans overflow-hidden">
-      <aside className="w-20 md:w-72 bg-luxury-dark flex flex-col p-6 border-r border-luxury-border">
+    <div className="min-h-screen flex flex-col md:flex-row bg-luxury-black text-white font-sans overflow-hidden">
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-72 bg-luxury-dark flex-col p-6 border-r border-luxury-border h-screen">
         <div className="flex items-center gap-4 mb-16 px-1">
           <div className="bg-gold p-2.5 rounded-2xl shadow-lg"><IceCream className="w-7 h-7 text-black" /></div>
-          <div className="hidden md:block"><h1 className="font-extrabold text-2xl tracking-tighter">CHOCORLATTE</h1><span className="text-[10px] text-gold font-bold uppercase tracking-widest">Luxury POS</span></div>
+          <div><h1 className="font-extrabold text-2xl tracking-tighter">CHOCORLATTE</h1><span className="text-[10px] text-gold font-bold uppercase tracking-widest">Luxury POS</span></div>
         </div>
         <nav className="flex-1 space-y-2">
           <NavItem active={view === 'pos'} onClick={() => setView('pos')} icon={<ShoppingCart />} label="Terminal de Ventas" />
@@ -463,16 +533,33 @@ export default function App() {
             </>
           )}
         </nav>
-        <button onClick={() => setUser(null)} className="flex items-center gap-4 p-4 text-red-500/60 hover:text-red-500 uppercase text-[10px] font-black"><LogOut className="w-6 h-6" /><span className="hidden md:block">Cerrar Sesión</span></button>
+        <button onClick={() => setUser(null)} className="flex items-center gap-4 p-4 text-red-500/60 hover:text-red-500 uppercase text-[10px] font-black"><LogOut className="w-6 h-6" /><span>Cerrar Sesión</span></button>
       </aside>
 
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto">
+      {/* Mobile Bottom Navbar */}
+      <nav className="flex md:hidden fixed bottom-0 left-0 right-0 h-16 bg-luxury-dark border-t border-luxury-border flex-row items-center justify-around z-50 px-2 py-1 backdrop-blur-md shadow-2xl">
+        <NavItem active={view === 'pos'} onClick={() => setView('pos')} icon={<ShoppingCart className="w-5 h-5" />} label="Ventas" mobile />
+        {user.role === 'ADMIN' && (
+          <>
+            <NavItem active={view === 'inventory'} onClick={() => setView('inventory')} icon={<BarChart2 className="w-5 h-5" />} label="Sabores" mobile />
+            <NavItem active={view === 'products'} onClick={() => setView('products')} icon={<Package className="w-5 h-5" />} label="Stock" mobile />
+            <NavItem active={view === 'reports'} onClick={() => setView('reports')} icon={<TrendingUp className="w-5 h-5" />} label="Reportes" mobile />
+            <NavItem active={view === 'users'} onClick={() => setView('users')} icon={<Users className="w-5 h-5" />} label="Staff" mobile />
+          </>
+        )}
+        <button onClick={() => setUser(null)} className="flex flex-col items-center justify-center p-2 rounded-xl text-red-500/60 hover:text-red-500 flex-1">
+          <LogOut className="w-5 h-5" />
+          <span className="text-[8px] font-bold uppercase tracking-wider mt-1">Salir</span>
+        </button>
+      </nav>
+
+      <main className="flex-1 p-6 md:p-10 overflow-y-auto pb-24 md:pb-10">
         <header className="flex justify-between items-center mb-12">
           <div><div className="flex items-center gap-3 mb-1"><Store className="w-4 h-4 text-gold" /><span className="text-xl font-bold cursor-pointer hover:text-gold" onClick={() => setLocation(location === 'Local A' ? 'Local B' : 'Local A')}>{location}</span></div><p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}</p></div>
           <button onClick={() => setView('reports')} className="px-6 py-3 bg-luxury-gray hover:bg-gold hover:text-black rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3"><FileText className="w-4 h-4" /> Ver Reportes Detallados</button>
         </header>
 
-        {view === 'pos' && <POSView formats={MOCK_FORMATS} flavors={flavors} products={extraProducts} selectedFormat={selectedFormat} setSelectedFormat={setSelectedFormat} selectedFlavors={selectedFlavors} handleFlavorSelect={handleFlavorSelect} addToCart={addToCart} cart={cart} setCart={setCart} finalizeSale={finalizeSale} total={total} />}
+        {view === 'pos' && <POSView formats={MOCK_FORMATS} flavors={flavors} products={extraProducts} selectedFormat={selectedFormat} setSelectedFormat={handleFormatChange} selectedFlavors={selectedFlavors} handleFlavorSelect={handleFlavorSelect} addToCart={addToCart} cart={cart} setCart={setCart} finalizeSale={finalizeSale} total={total} />}
         {view === 'inventory' && <InventoryView flavors={flavors} setFlavors={setFlavors} location={location} />}
         {view === 'products' && <ProductManagementView extraProducts={extraProducts} setExtraProducts={setExtraProducts} />}
         {view === 'users' && <UsersView users={users} setUsers={setUsers} />}
@@ -482,10 +569,19 @@ export default function App() {
   );
 }
 
-function NavItem({ active, onClick, icon, label }: any) {
+function NavItem({ active, onClick, icon, label, mobile }: any) {
+  if (mobile) {
+    return (
+      <button onClick={onClick} className={cn("flex flex-col items-center justify-center p-2 rounded-xl transition-all flex-1", active ? "text-gold" : "text-gray-500 hover:text-white")}>
+        <div className={cn("p-1.5 rounded-lg", active && "bg-gold/15")}>{icon}</div>
+        <span className="text-[8px] font-bold uppercase tracking-wider mt-1">{label}</span>
+      </button>
+    );
+  }
   return (
     <button onClick={onClick} className={cn("w-full flex items-center gap-4 p-4 rounded-2xl transition-all", active ? "bg-gold text-black shadow-lg shadow-gold/20" : "text-gray-500 hover:text-white hover:bg-white/5")}>
-      {icon} <span className="text-xs font-black uppercase tracking-widest hidden md:block">{label}</span>
+      {icon} <span className="text-xs font-black uppercase tracking-widest">{label}</span>
     </button>
   );
 }
+
